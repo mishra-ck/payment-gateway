@@ -3,6 +3,7 @@ package payment.gateway.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import payment.gateway.domain.dto.PaymentRequest;
+import payment.gateway.domain.dto.PaymentResponse;
 import payment.gateway.repository.PaymentRepository;
 
 @Service
@@ -14,7 +15,7 @@ public class PaymentService {
         this.paymentRepository = paymentRepository;
     }
 
-    public Object initiatePayment(PaymentRequest request, String idempotencyKey) {
+    public PaymentResponse initiatePayment(PaymentRequest request, String idempotencyKey) {
         /* TBD */
         return null;
     }
