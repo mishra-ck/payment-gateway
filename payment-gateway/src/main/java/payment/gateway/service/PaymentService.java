@@ -1,5 +1,8 @@
 package payment.gateway.service;
 
+import com.fasterxml.jackson.databind.ObjectReader;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -8,8 +11,12 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import payment.gateway.domain.dto.PaymentRequest;
 import payment.gateway.domain.dto.PaymentResponse;
+import payment.gateway.exception.InvalidPaymentException;
+import payment.gateway.repository.AccountRepository;
 import payment.gateway.repository.IdempotencyRepository;
 import payment.gateway.repository.PaymentRepository;
+
+import java.io.IOException;
 
 @Service
 @Slf4j
@@ -17,10 +24,19 @@ public class PaymentService {
     private static final Logger LOG = LoggerFactory.getLogger(PaymentService.class);
     private final PaymentRepository paymentRepository ;
     private final IdempotencyRepository idempotencyRepository;
+    private final AccountRepository accountRepository;
+    private final Counter paymentDuped;
+    private final MeterRegistry meterRegistry;
 
-    public PaymentService(PaymentRepository paymentRepository, IdempotencyRepository idempotencyRepository) {
+    ObjectReader objectMapper;
+
+    public PaymentService(PaymentRepository paymentRepository, IdempotencyRepository idempotencyRepository, Counter paymentDeduped, AccountRepository accountRepository, MeterRegistry meterRegistry) {
         this.paymentRepository = paymentRepository;
         this.idempotencyRepository = idempotencyRepository;
+        this.accountRepository = accountRepository;
+        this.meterRegistry = meterRegistry;
+        this.paymentDuped = Counter.builder("payment.duplicated")
+                .description("Payment returned from idempotency cache").register(this.meterRegistry);
     }
 
     @Transactional
@@ -32,17 +48,38 @@ public class PaymentService {
         MDC.put("idempotencyKey",idempotencyKey);
 
         try{
-            /** ------ Idempotency Check ---------- **/
-            var existing = idempotencyRepository.findByIdempotencyKey(idempotencyKey);
-            if(existing.isPresent()){
-                LOG.info("Idempotency Hit : key{}",idempotencyKey);
 
+            /** STEP-1 ------ Idempotency Check ---------- **/
+            var existing = idempotencyRepository.findByIdempotencyKey(idempotencyKey);
+            if(existing.isPresent() && !existing.get().isExpired()){
+                LOG.info("Idempotency Hit : key{}",idempotencyKey);
+                paymentDuped.increment();
+                return deserialize(existing.get().getResponseBody(),PaymentResponse.class);
             }
+            /** STEP-2 ------ Validate Accounts ---------- **/
+            var sourceAccount = accountRepository.findById(request.sourceAccountId())
+                    .orElseThrow(
+                            () -> new InvalidPaymentException("Source Account not found: "+ request.sourceAccountId())
+                    );
+            var targetAccount = accountRepository.findById(request.targetAccount())
+                    .orElseThrow(
+                            () -> new InvalidPaymentException("Target Account not found: "+ request.targetAccount())
+                    );
+            /*  TBC - Currency validation of source and target accounts */
+
 
         }finally {
-
+            MDC.remove("idempotencyKey");
+            MDC.remove("paymentId");
         }
 
         return null;
+    }
+    private <T> T deserialize(String json,Class<T> type){
+        try{
+            return objectMapper.readValue(json, type);
+        }catch(IOException e){
+            throw new RuntimeException("Failed to de-serialized response",e);
+        }
     }
 }
