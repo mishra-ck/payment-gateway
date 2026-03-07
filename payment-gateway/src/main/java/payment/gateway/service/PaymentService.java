@@ -36,6 +36,7 @@ public class PaymentService {
             var existing = idempotencyRepository.findByIdempotencyKey(idempotencyKey);
             if(existing.isPresent()){
                 LOG.info("Idempotency Hit : key{}",idempotencyKey);
+
             }
 
         }finally {
