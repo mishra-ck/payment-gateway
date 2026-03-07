@@ -10,7 +10,7 @@ public record PaymentRequest(
         @NotNull(message = "Source Account Id is required")
         UUID sourceAccountId,
         @NotNull(message = "Target Account Id is required")
-        UUID targetAccount,
+        UUID targetAccountId,
         @NotNull(message = "Amount is required")
         @DecimalMin(value = "0.1",message = "Amount should be more than 0")
         @Digits(integer = 15, fraction = 4, message = "Amount exceeds precision limits")

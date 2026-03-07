@@ -11,6 +11,7 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import payment.gateway.domain.dto.PaymentRequest;
 import payment.gateway.domain.dto.PaymentResponse;
+import payment.gateway.domain.model.Payment;
 import payment.gateway.exception.InvalidPaymentException;
 import payment.gateway.repository.AccountRepository;
 import payment.gateway.repository.IdempotencyRepository;
@@ -27,14 +28,14 @@ public class PaymentService {
     private final AccountRepository accountRepository;
     private final Counter paymentDuped;
     private final MeterRegistry meterRegistry;
+    private final ObjectReader objectMapper;
 
-    ObjectReader objectMapper;
-
-    public PaymentService(PaymentRepository paymentRepository, IdempotencyRepository idempotencyRepository, Counter paymentDeduped, AccountRepository accountRepository, MeterRegistry meterRegistry) {
+    public PaymentService(PaymentRepository paymentRepository, IdempotencyRepository idempotencyRepository, Counter paymentDeduped, AccountRepository accountRepository, MeterRegistry meterRegistry, ObjectReader objectMapper) {
         this.paymentRepository = paymentRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.accountRepository = accountRepository;
         this.meterRegistry = meterRegistry;
+        this.objectMapper = objectMapper;
         this.paymentDuped = Counter.builder("payment.duplicated")
                 .description("Payment returned from idempotency cache").register(this.meterRegistry);
     }
@@ -61,11 +62,24 @@ public class PaymentService {
                     .orElseThrow(
                             () -> new InvalidPaymentException("Source Account not found: "+ request.sourceAccountId())
                     );
-            var targetAccount = accountRepository.findById(request.targetAccount())
+            var targetAccount = accountRepository.findById(request.targetAccountId())
                     .orElseThrow(
-                            () -> new InvalidPaymentException("Target Account not found: "+ request.targetAccount())
+                            () -> new InvalidPaymentException("Target Account not found: "+ request.targetAccountId())
                     );
             /*  TBC - Currency validation of source and target accounts */
+
+            /** STEP-3 ------ Create Payment ---------- **/
+            var payment = Payment.builder()
+                    .idempotencyKey(idempotencyKey)
+                    .sourceAccountId(request.sourceAccountId())
+                    .targetAccountId(request.targetAccountId())
+                    .amount(request.amount())
+                    .currency(request.currency())
+                    .statusCode("Pending")
+                    .reference(request.reference())
+                    .build();
+
+            paymentRepository.save(payment);
 
 
         }finally {
