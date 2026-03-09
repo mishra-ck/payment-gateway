@@ -9,9 +9,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
+import payment.gateway.config.constants.Constants;
 import payment.gateway.domain.dto.PaymentRequest;
 import payment.gateway.domain.dto.PaymentResponse;
 import payment.gateway.domain.model.Payment;
+import payment.gateway.domain.model.PaymentEvent;
 import payment.gateway.exception.InvalidPaymentException;
 import payment.gateway.repository.AccountRepository;
 import payment.gateway.repository.IdempotencyRepository;
@@ -81,6 +83,20 @@ public class PaymentService {
 
             paymentRepository.save(payment);
 
+            // Append initial payment event to audit trail
+            var initEvent = PaymentEvent.builder()
+                    .eventType(Constants.PaymentStatus.INITIATED)
+                    .fromStatus(null)
+                    .toStatus(Constants.PaymentStatus.PENDING)
+                    .updatedBy(Constants.SYSTEM)
+                    .correlationId(idempotencyKey)
+                    .build();
+            payment.addEvent(initEvent);
+            paymentRepository.save(payment);
+
+            MDC.put("paymentId",payment.getId().toString());
+
+            /* TBD */
 
         }finally {
             MDC.remove("idempotencyKey");

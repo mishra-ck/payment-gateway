@@ -12,10 +12,19 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "payments")
+@Table(name = "payments",
+        indexes = {
+                @Index(name = "idx_payments_idempotency_key", columnList = "idempotency_key", unique = true),
+                @Index(name = "idx_payments_source_account",  columnList = "source_account_id"),
+                @Index(name = "idx_payments_status",          columnList = "status_code"),
+                @Index(name = "idx_payments_created_at",      columnList = "created_at")
+        }
+)
 @Setter
 @Getter
 @Builder
@@ -74,5 +83,14 @@ public class Payment {
     @Column(name = "settled_at")
     private Instant settledAt;
 
+    @OneToMany(mappedBy = "payment",cascade =CascadeType.ALL,fetch = FetchType.LAZY)
+    @OrderBy("occurredAt ASC")
+    @Builder.Default
+    private List<PaymentEvent> events = new ArrayList<>();
+
+    public void addEvent(PaymentEvent event) {
+        events.add(event);
+        event.setPayment(this);
+    }
 
 }
