@@ -19,7 +19,7 @@ import payment.gateway.domain.dto.PaymentResponse;
 import payment.gateway.service.PaymentService;
 
 @RestController
-@RequestMapping(Constants.BASE_PATH )
+@RequestMapping(Constants.Endpoint.BASE_PATH )
 @Slf4j
 @Validated
 @RequiredArgsConstructor
@@ -27,7 +27,7 @@ public class PaymentProcessController {
     private final PaymentService paymentService = null;
     private static final Logger LOG = LoggerFactory.getLogger(PaymentProcessController.class);
 
-    @PostMapping(Constants.VERSION_V1 + Constants.PAYMENTS)
+    @PostMapping(Constants.Endpoint.VERSION_V1 + Constants.Endpoint.PAYMENTS)
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<PaymentResponse> initiatePayment(
         @RequestHeader("X-Idempotency-Key")
