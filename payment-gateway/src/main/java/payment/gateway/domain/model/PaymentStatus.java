@@ -13,7 +13,6 @@ public sealed interface PaymentStatus permits
     boolean isTerminal();
 
     record Pending() implements PaymentStatus{
-
         @Override
         public String code() {
             return Constants.PaymentStatus.PENDING;
@@ -28,17 +27,14 @@ public sealed interface PaymentStatus permits
         }
     }
     record Processing() implements PaymentStatus{
-
         @Override
         public String code() {
             return Constants.PaymentStatus.PROCESSING;
         }
-
         @Override
         public String description() {
             return "Debit applied, credit in progress";
         }
-
         @Override
         public boolean isTerminal() {
             return false;
@@ -50,32 +46,46 @@ public sealed interface PaymentStatus permits
         public String code() {
             return Constants.PaymentStatus.SETTLED;
         }
-
         @Override
         public String description() {
             return "Payment fully settled and ledger balanced";
         }
-
         @Override
         public boolean isTerminal() {
             return false;
         }
     }
-    record Failed(String reason) implements PaymentStatus{
 
+    record Failed(String reason) implements PaymentStatus{
         @Override
         public String code() {
             return Constants.PaymentStatus.FAILED;
         }
-
         @Override
         public String description() {
             return "Payment failed: " + reason;
         }
-
         @Override
         public boolean isTerminal() {
             return true ;
         }
     }
+
+    /** -------- factory method ---------- */
+    static PaymentStatus pending()    { return new Pending(); }
+    static PaymentStatus processing() { return new Processing(); }
+    static PaymentStatus settled()    { return new Settled(); }
+    static PaymentStatus failed(String reason) {
+        return new Failed(reason);
+    }
+
+    static PaymentStatus fromCode(String code){
+        return switch (code){
+            case "pending" -> pending();
+            case "processing" -> processing();
+            case "settled" -> settled();
+            default ->  throw new IllegalArgumentException("Unknown status: "+ code);
+        };
+    }
+
 }

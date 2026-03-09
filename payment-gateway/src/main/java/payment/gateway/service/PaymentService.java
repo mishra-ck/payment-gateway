@@ -77,7 +77,7 @@ public class PaymentService {
                     .targetAccountId(request.targetAccountId())
                     .amount(request.amount())
                     .currency(request.currency())
-                    .statusCode("Pending")
+                    .statusCode(Constants.PaymentStatus.PENDING)
                     .reference(request.reference())
                     .build();
 
@@ -96,7 +96,13 @@ public class PaymentService {
 
             MDC.put("paymentId",payment.getId().toString());
 
-            /* TBD */
+            /* TBD - KAFKA Event publishing */
+
+            /** STEP-5 ---------- Save Idempotency Record  ------------*/
+            var response = toPaymentResponse(payment);
+
+
+
 
         }finally {
             MDC.remove("idempotencyKey");
@@ -111,5 +117,24 @@ public class PaymentService {
         }catch(IOException e){
             throw new RuntimeException("Failed to de-serialized response",e);
         }
+    }
+
+    private PaymentResponse toPaymentResponse(Payment payment) {
+        var status = payment.getStatus();
+        return new PaymentResponse(
+                payment.getId(),
+                payment.getIdempotencyKey(),
+                payment.getSourceAccountId(),
+                payment.getTargetAccountId(),
+                payment.getAmount(),
+                payment.getCurrency(),
+                status.code(),
+                status.description(),
+                payment.getFailureReason(),
+                payment.getReference(),
+                payment.getCreatedAt(),
+                payment.getUpdatedAt(),
+                payment.getSettledAt()
+        );
     }
 }

@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import payment.gateway.config.constants.Constants;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -92,5 +93,13 @@ public class Payment {
         events.add(event);
         event.setPayment(this);
     }
+     public PaymentStatus getStatus(){
+        if(Constants.PaymentStatus.FAILED.equals(statusCode)){
+            return PaymentStatus.failed(failureReason);
+        }else{
+            return PaymentStatus.fromCode(statusCode);
+        }
+     }
+
 
 }
