@@ -1,6 +1,7 @@
 package payment.gateway.service;
 
-import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.transaction.Transactional;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import payment.gateway.config.constants.Constants;
 import payment.gateway.domain.dto.PaymentRequest;
 import payment.gateway.domain.dto.PaymentResponse;
+import payment.gateway.domain.model.IdempotencyRecord;
 import payment.gateway.domain.model.Payment;
 import payment.gateway.domain.model.PaymentEvent;
 import payment.gateway.exception.InvalidPaymentException;
@@ -20,6 +22,8 @@ import payment.gateway.repository.IdempotencyRepository;
 import payment.gateway.repository.PaymentRepository;
 
 import java.io.IOException;
+import java.util.InvalidPropertiesFormatException;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -29,10 +33,11 @@ public class PaymentService {
     private final IdempotencyRepository idempotencyRepository;
     private final AccountRepository accountRepository;
     private final Counter paymentDuped;
+    private final Counter paymentsInitiated;
     private final MeterRegistry meterRegistry;
-    private final ObjectReader objectMapper;
+    private final ObjectMapper objectMapper;
 
-    public PaymentService(PaymentRepository paymentRepository, IdempotencyRepository idempotencyRepository, Counter paymentDeduped, AccountRepository accountRepository, MeterRegistry meterRegistry, ObjectReader objectMapper) {
+    public PaymentService(PaymentRepository paymentRepository, IdempotencyRepository idempotencyRepository, Counter paymentDeduped, AccountRepository accountRepository, Counter paymentsInitiated, MeterRegistry meterRegistry, ObjectMapper objectMapper) {
         this.paymentRepository = paymentRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.accountRepository = accountRepository;
@@ -40,6 +45,8 @@ public class PaymentService {
         this.objectMapper = objectMapper;
         this.paymentDuped = Counter.builder("payment.duplicated")
                 .description("Payment returned from idempotency cache").register(this.meterRegistry);
+        this.paymentsInitiated = Counter.builder("payment-initiated")
+                .description("Total payment initiated").register(meterRegistry);
     }
 
     @Transactional
@@ -68,7 +75,10 @@ public class PaymentService {
                     .orElseThrow(
                             () -> new InvalidPaymentException("Target Account not found: "+ request.targetAccountId())
                     );
-            /*  TBC - Currency validation of source and target accounts */
+
+            if(!sourceAccount.getCurrency().equals(request.currency())){
+                throw new InvalidPropertiesFormatException("Currency mismatch between source and target accounts");
+            }
 
             /** STEP-3 ------ Create Payment ---------- **/
             var payment = Payment.builder()
@@ -96,21 +106,41 @@ public class PaymentService {
 
             MDC.put("paymentId",payment.getId().toString());
 
-            /* TBD - KAFKA Event publishing */
+            /* TBD*/
 
             /** STEP-5 ---------- Save Idempotency Record  ------------*/
             var response = toPaymentResponse(payment);
+            saveIdempotencyRecord(idempotencyKey,payment.getId(),201,response);
 
+            paymentsInitiated.increment();
 
+            log.info("Payment-Initiated, paymentId:{},sourceAccount:{}",payment.getId(),payment.getSourceAccountId());
+            return  response;
 
-
-        }finally {
+        } catch (InvalidPropertiesFormatException e) {
+            throw new RuntimeException(e);
+        } finally {
             MDC.remove("idempotencyKey");
             MDC.remove("paymentId");
         }
 
-        return null;
     }
+
+    private void saveIdempotencyRecord(String idempotencyKey, UUID id, int status, PaymentResponse response) {
+        try {
+            var record = IdempotencyRecord.builder()
+                    .idempotencyKey(idempotencyKey)
+                    .paymentId(id)
+                    .responseStatus(status)
+                    .responseBody(objectMapper.writeValueAsString(response))
+                            .build();
+            // save the updated record
+            idempotencyRepository.save(record);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize idempotency response", e);
+        }
+    }
+
     private <T> T deserialize(String json,Class<T> type){
         try{
             return objectMapper.readValue(json, type);
