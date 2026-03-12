@@ -18,15 +18,18 @@ import payment.gateway.domain.dto.PaymentRequest;
 import payment.gateway.domain.dto.PaymentResponse;
 import payment.gateway.service.PaymentService;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping(Constants.Endpoint.BASE_PATH )
 @Slf4j
 @Validated
 @RequiredArgsConstructor
 public class PaymentProcessController {
-    private final PaymentService paymentService = null;
     private static final Logger LOG = LoggerFactory.getLogger(PaymentProcessController.class);
+    private final PaymentService paymentService = null;
 
+    /**--- Initiate Payment End Point  ----*/
     @PostMapping(Constants.Endpoint.VERSION_V1 + Constants.Endpoint.PAYMENTS)
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<PaymentResponse> initiatePayment(
@@ -58,6 +61,29 @@ public class PaymentProcessController {
         }finally {
             MDC.remove("idempotencyKey");
             MDC.remove("requestId");
+        }
+    }
+
+    /** ----------  GET Payment Details ---------- */
+    @GetMapping(Constants.Endpoint.VERSION_V1 + "/{paymentId}")
+    public ResponseEntity<PaymentResponse> getPaymentDetails(
+            @PathVariable UUID paymentId,
+            @RequestHeader(value = "X-Request-Id", required = false) String requestId
+    ) {
+        MDC.put("paymentId", paymentId.toString());
+        try {
+            LOG.debug("API Get Payment, paymentId = {}", paymentId);
+            var response = paymentService.getPaymentDetails(paymentId);
+
+            var headers = new HttpHeaders();
+            headers.set("X-Payment-Id", paymentId.toString());
+            if (requestId != null) {
+                headers.set("X-Request-Id", requestId);
+            }
+            return ResponseEntity.ok().header(String.valueOf(headers)).body(response);
+
+        } finally {
+            MDC.remove("paymentId");
         }
     }
 

@@ -167,4 +167,9 @@ public class PaymentService {
                 payment.getSettledAt()
         );
     }
+
+    public PaymentResponse getPaymentDetails(UUID paymentId) {
+        /*TBD*/
+        return null;
+    }
 }
