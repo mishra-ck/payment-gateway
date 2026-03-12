@@ -4,12 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import payment.gateway.config.constants.Constants;
 import payment.gateway.domain.dto.PaymentRequest;
 import payment.gateway.domain.dto.PaymentResponse;
@@ -17,6 +17,7 @@ import payment.gateway.domain.model.IdempotencyRecord;
 import payment.gateway.domain.model.Payment;
 import payment.gateway.domain.model.PaymentEvent;
 import payment.gateway.exception.InvalidPaymentException;
+import payment.gateway.exception.PaymentNotFoundException;
 import payment.gateway.repository.AccountRepository;
 import payment.gateway.repository.IdempotencyRepository;
 import payment.gateway.repository.PaymentRepository;
@@ -141,6 +142,13 @@ public class PaymentService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public PaymentResponse getPaymentDetails(UUID paymentId) {
+        var payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new PaymentNotFoundException("Payment not found: "+ paymentId));
+        return toPaymentResponse(payment);
+    }
+
     private <T> T deserialize(String json,Class<T> type){
         try{
             return objectMapper.readValue(json, type);
@@ -168,8 +176,4 @@ public class PaymentService {
         );
     }
 
-    public PaymentResponse getPaymentDetails(UUID paymentId) {
-        /*TBD*/
-        return null;
-    }
 }
