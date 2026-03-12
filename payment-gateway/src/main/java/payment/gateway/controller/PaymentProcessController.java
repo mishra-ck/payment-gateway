@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import payment.gateway.config.constants.Constants;
+import payment.gateway.domain.dto.PaymentHistoryResponse;
 import payment.gateway.domain.dto.PaymentRequest;
 import payment.gateway.domain.dto.PaymentResponse;
 import payment.gateway.service.PaymentService;
@@ -86,5 +87,15 @@ public class PaymentProcessController {
             MDC.remove("paymentId");
         }
     }
+
+    /** ------- GET Payment history ----------- */
+    @GetMapping(Constants.Endpoint.VERSION_V1+"/{paymentId}/history")
+    public ResponseEntity<PaymentHistoryResponse> getPaymentHistory(
+            @PathVariable UUID paymentId
+    ){
+        LOG.debug("API Get History: paymentId={}", paymentId);
+        return ResponseEntity.ok(paymentService.getPaymentHistory(paymentId));
+    }
+
 
 }

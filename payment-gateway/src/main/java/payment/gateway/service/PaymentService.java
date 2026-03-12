@@ -11,6 +11,7 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import payment.gateway.config.constants.Constants;
+import payment.gateway.domain.dto.PaymentHistoryResponse;
 import payment.gateway.domain.dto.PaymentRequest;
 import payment.gateway.domain.dto.PaymentResponse;
 import payment.gateway.domain.model.IdempotencyRecord;
@@ -147,6 +148,12 @@ public class PaymentService {
         var payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new PaymentNotFoundException("Payment not found: "+ paymentId));
         return toPaymentResponse(payment);
+    }
+
+
+    public PaymentHistoryResponse getPaymentHistory(UUID paymentId) {
+        /*TBD*/
+        return null;
     }
 
     private <T> T deserialize(String json,Class<T> type){
