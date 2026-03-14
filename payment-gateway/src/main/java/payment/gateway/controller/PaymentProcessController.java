@@ -1,5 +1,6 @@
 package payment.gateway.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -26,6 +27,7 @@ import java.util.UUID;
 @Slf4j
 @Validated
 @RequiredArgsConstructor
+@Tag(name = "Payments", description = "Realtime Payment Processing API ")
 public class PaymentProcessController {
     private static final Logger LOG = LoggerFactory.getLogger(PaymentProcessController.class);
     private final PaymentService paymentService = null;

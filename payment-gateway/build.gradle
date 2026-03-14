@@ -47,6 +47,9 @@ dependencies {
 	implementation 'org.mapstruct:mapstruct'
 	implementation 'org.mapstruct:mapstruct-processor'
 
+	implementation 'io.swagger.core.v3:swagger-annotations:2.1.5'
+	implementation 'io.swagger.core.v3:swagger-core:2.1.5'
+
 	compileOnly    'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
