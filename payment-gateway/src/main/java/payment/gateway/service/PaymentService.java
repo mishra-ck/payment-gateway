@@ -58,7 +58,6 @@ public class PaymentService {
     }
     private PaymentResponse doInitiatePayment(PaymentRequest request, String idempotencyKey){
         MDC.put("idempotencyKey",idempotencyKey);
-
         try{
 
             /** STEP-1 ------ Idempotency Check ---------- **/
@@ -152,7 +151,8 @@ public class PaymentService {
 
 
     public PaymentHistoryResponse getPaymentHistory(UUID paymentId) {
-        /*TBD*/
+        var paymentHistory = paymentRepository.findByIdWithEvents(paymentId)
+                .orElseThrow();
         return null;
     }
 

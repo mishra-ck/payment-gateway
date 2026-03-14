@@ -4,7 +4,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.Instant;
 import java.util.UUID;
-public record PaymentHistoryEntry(UUID eventId,
+public record PaymentHistoryEntry(
+      UUID eventId,
       String eventType,
       String fromStatus,
       String toStatus,

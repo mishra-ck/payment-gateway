@@ -7,5 +7,4 @@ public record PaymentHistoryResponse(
         UUID paymentId,
         String currentStatus,
         List<PaymentHistoryEntry> history
-) {
-}
+) { }
