@@ -5,6 +5,11 @@ import payment.gateway.config.constants.Constants;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * TOPIC : payment.failed
+ * Published by any service that encounters an unrecoverable error.
+ * Consumed by PaymentService (status update) and AccountService (compensate).
+ */
 public record PaymentFailedEvent(
         UUID paymentId,
         String correlationId,

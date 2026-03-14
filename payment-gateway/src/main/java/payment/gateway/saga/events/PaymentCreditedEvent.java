@@ -6,6 +6,11 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * TOPIC : payment.credited
+ * Published by AccountService after successfully crediting destination.
+ * Consumed by LedgerService to record the double-entry ledger entries.
+ */
 public record PaymentCreditedEvent(
         UUID paymentId,
         String correlationId,

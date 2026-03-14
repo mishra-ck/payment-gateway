@@ -6,6 +6,11 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ *  TOPIC : payment.debited
+ * Published by AccountService after successfully debiting source account.
+ * Consumed by AccountService to credit destination.
+ */
 public record PaymentDebitedEvent(
         UUID paymentId,
         String correlationId,
