@@ -1,13 +1,26 @@
 package payment.gateway.infrastructure.kafka;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.core.*;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.support.serializer.JsonSerializer;
+import payment.gateway.saga.events.SagaEvent;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * KAFKA Infrastructure configuration
@@ -66,6 +79,67 @@ public class KafkaConfig {
     public NewTopic topicDeadLetter(){
         return TopicBuilder.name(TOPIC_PAYMENT_DLT)
                 .partitions(3).replicas(1).build();
+    }
+
+    /** ------------- KAFKA Producer ------------------- */
+    @Bean
+    public ProducerFactory<String, SagaEvent> producerFactory(){
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,bootstrapServers);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+
+        // Idempotent producer : exactly-one delivery
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG,true);
+        props.put(ProducerConfig.ACKS_CONFIG,"all");
+        props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION,5);
+        props.put(ProducerConfig.RETRIES_CONFIG,Integer.MAX_VALUE);
+
+        // Batching for throughput
+        props.put(ProducerConfig.BATCH_SIZE_CONFIG,16_000);
+        props.put(ProducerConfig.LINGER_MS_CONFIG,5);
+        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG,"snappy");
+
+        return new DefaultKafkaProducerFactory<>(props,new StringSerializer(),
+                new JsonSerializer<>());
+
+    }
+    @Bean
+    public KafkaTemplate<String,SagaEvent> kafkaTemplate(){
+        var template = new KafkaTemplate<>(producerFactory());
+        template.setObservationEnabled(true);
+        return  template;
+    }
+
+    /** -------------- KAFKA Consumer ------------------- */
+    @Bean
+    public ConsumerFactory<String,SagaEvent> consumerFactory(){
+        Map<String,Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG,groupId);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+
+        //Manual offset commit prevents message loss
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,false);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest");
+
+        // Fetch tuning for throughput
+        props.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG,1024);
+        props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG,500);
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,50);
+
+        var deserializer = new JsonDeserializer<>(SagaEvent.class,objectmapper());
+        deserializer.addTrustedPackages("payment.gateway.saga.events");
+        deserializer.setUseTypeMapperForKey(false);
+
+        return new DefaultKafkaConsumerFactory<>(props,new StringDeserializer(),deserializer);
+    }
+
+    private ObjectMapper objectmapper() {
+        var mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        return mapper;
     }
 
 }
