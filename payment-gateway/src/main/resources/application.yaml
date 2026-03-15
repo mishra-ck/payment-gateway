@@ -44,7 +44,7 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "com.payment.gateway.saga.events"
+        spring.json.trusted.packages: "payment.gateway.saga.events"
         session.timeout.ms: 30000
         heartbeat.interval.ms: 3000
     producer:
