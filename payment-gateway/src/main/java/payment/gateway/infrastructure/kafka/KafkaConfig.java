@@ -13,10 +13,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.util.backoff.ExponentialBackOff;
 import payment.gateway.saga.events.SagaEvent;
 
 import java.util.HashMap;
@@ -135,6 +139,37 @@ public class KafkaConfig {
 
         return new DefaultKafkaConsumerFactory<>(props,new StringDeserializer(),deserializer);
     }
+
+    public ConcurrentKafkaListenerContainerFactory<String,SagaEvent> kafkaListenerContainerFactory(
+            ConsumerFactory<String,SagaEvent> consumerFactory,
+            KafkaTemplate<String,SagaEvent> kafkaTemplate){
+
+        var  factory = new ConcurrentKafkaListenerContainerFactory<String, SagaEvent>();
+        factory.setConsumerFactory(consumerFactory);
+        factory.setConcurrency(3);  // 3 consumer threads per topic partition
+
+        // commit offset only after successful processing
+        factory.getContainerProperties().setAckMode(
+                ContainerProperties.AckMode.MANUAL_IMMEDIATE
+        );
+        factory.getContainerProperties().setObservationEnabled(true);
+        var backOff = new ExponentialBackOff(1000L,2.0);
+        backOff.setMaxInterval(16_000L);
+        backOff.setMaxElapsedTime(60_000L);
+
+        var errorHandler = new DefaultErrorHandler(
+                (record,exception)->{
+                    LOG.error("Saga_DLT,Sending to Dead Letter Topic,paymentId:{},error:{}",
+                            record.key(),exception.getMessage(),exception);
+                    kafkaTemplate.send(TOPIC_PAYMENT_DLT,
+                            record.key().toString(),(SagaEvent) record.value());
+                }
+        );
+        factory.setCommonErrorHandler(errorHandler);
+
+        return factory;
+    }
+
 
     private ObjectMapper objectmapper() {
         var mapper = new ObjectMapper();
