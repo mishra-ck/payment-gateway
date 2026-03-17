@@ -55,5 +55,18 @@ public class LedgerEntry {
                 .description(description)
                 .build();
     }
+    // Creating Reversal LedgerEntry in Rollback
+    public LedgerEntry reverse(UUID newJournalId){
+        return LedgerEntry.builder()
+                .journalId(newJournalId)
+                .paymentId(this.paymentId)
+                .accountId(this.accountId)
+                .entryType(this.entryType == EntryType.DR ? EntryType.CR:EntryType.DR)
+                .amount(this.amount)
+                .description("Reversal : "+ this.description)
+                .reversal(true)
+                .reversedEntryId(this.id)
+                .build();
+    }
 
 }

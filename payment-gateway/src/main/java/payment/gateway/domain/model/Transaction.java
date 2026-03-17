@@ -17,6 +17,7 @@ import java.util.UUID;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
 public class Transaction {
+
     @Id
     private UUID id;
     private UUID paymentId;
