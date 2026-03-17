@@ -1,6 +1,7 @@
 package payment.gateway.domain.model;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import payment.gateway.config.enums.EntryType;
 
@@ -12,6 +13,7 @@ import java.util.UUID;
 @Table(name = "ledger_entries")
 public class LedgerEntry {
 
+    @Id
     private UUID id;
     private UUID paymentId;
     private UUID accountId;
