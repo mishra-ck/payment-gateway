@@ -17,11 +17,13 @@ import payment.gateway.domain.dto.PaymentResponse;
 import payment.gateway.domain.model.IdempotencyRecord;
 import payment.gateway.domain.model.Payment;
 import payment.gateway.domain.model.PaymentEvent;
+import payment.gateway.domain.model.PaymentStatus;
 import payment.gateway.exception.InvalidPaymentException;
 import payment.gateway.exception.PaymentNotFoundException;
 import payment.gateway.repository.AccountRepository;
 import payment.gateway.repository.IdempotencyRepository;
 import payment.gateway.repository.PaymentRepository;
+import payment.gateway.saga.events.PaymentInitiatedEvent;
 
 import java.io.IOException;
 import java.util.InvalidPropertiesFormatException;
@@ -183,4 +185,11 @@ public class PaymentService {
         );
     }
 
+    public void transitionPaymentStatus(UUID uuid, PaymentStatus processing, String s, String s1) {
+        /* TBD - Implementation */
+    }
+
+    public void processCredit(PaymentInitiatedEvent event) {
+        /*TBD - Implementation */
+    }
 }

@@ -11,6 +11,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 import payment.gateway.config.constants.Constants;
 import payment.gateway.config.constants.KafkaConstants;
+import payment.gateway.domain.model.PaymentStatus;
 import payment.gateway.infrastructure.kafka.KafkaConfig;
 import payment.gateway.saga.events.PaymentInitiatedEvent;
 import payment.gateway.saga.events.SagaEvent;
@@ -76,8 +77,45 @@ public class EventHandlers {
                 throw e;
             }
         });
-
     }
+
+    /** payment.debited --> credit target account */
+    @KafkaListener(
+            topics = KafkaConfig.TOPIC_PAYMENT_DEBITED,
+            groupId = KafkaConstants.KAFKA_CREDIT_GROUP,
+            containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
+    )
+    public void onPaymentDebited(ConsumerRecord<String, SagaEvent> record, Acknowledgment ack){
+
+        var event = (PaymentInitiatedEvent)record.value();
+        var sagaKey = "credit:"+event.paymentId();
+
+        moveMDC(event.paymentId(), event.correlationId(), "CREDIT",()->{
+           if(idempotencyHandlers.alredyProcessed(sagaKey)){
+               LOG.info("SAGA_CREDIT_SKIP: already processed");
+               ack.acknowledge();
+               return;
+           }
+           // Moving to PROCESSING
+            paymentService.transitionPaymentStatus(
+              event.paymentId(),
+                    PaymentStatus.processing(),
+                    event.correlationId(),
+                    "Debit applied, crediting target account"
+            );
+
+           try{
+               paymentService.processCredit(event);
+               idempotencyHandlers.markProcessed(sagaKey);
+               meterRegistry.counter("saga.event.processed","event",Constants.PaymentStatus.DEBITED).increment();
+               ack.acknowledge();
+           }catch (Exception ex){
+               LOG.info("SAGA_CREDIT_ERROR: paymentId:{}", event.paymentId(),ex);
+               meterRegistry.counter("saga.event.failed","event",Constants.PaymentStatus.INITIATED).increment();
+           }
+        });
+    }
+
     private void moveMDC(UUID paymentId, String correlationId, String step, Runnable action){
         MDC.put("paymentId",paymentId.toString());
         MDC.put("correlationId",correlationId);
