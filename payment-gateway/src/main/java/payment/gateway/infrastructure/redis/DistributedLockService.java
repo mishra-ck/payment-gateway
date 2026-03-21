@@ -1,6 +1,5 @@
 package payment.gateway.infrastructure.redis;
 
-import com.esotericsoftware.minlog.Log;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +44,7 @@ public class DistributedLockService {
    }
 
    private <T> T withLock(String lockKey, Supplier<T> action) {
+
       RLock lock = redissonClient.getLock(lockKey);
       Timer.Sample sample = Timer.start(meterRegistry);
       boolean lockAcquired = false ;
@@ -61,14 +61,23 @@ public class DistributedLockService {
          }
          LOG.debug("LOCK_ACQUIRED: key={}, threadId={}", lockKey, Thread.currentThread().getId());
          meterRegistry.counter("distributed_lock.acquired","key_prefix",extractPrefix(lockKey)).increment();
-         return action.get();
-      }catch(InterruptedException | LockAcquireException ex){
-         /*TBD*/
-      }finally {
-         /*TBD*/
-      }
 
-      return null;
+         return action.get();
+
+      }catch(InterruptedException | LockAcquireException ex){
+         Thread.currentThread().interrupt();
+         LOG.error("Lock acquisition interrupted for : "+ lockKey, ex);
+      }finally {
+         if(lockAcquired && lock.isHeldByCurrentThread()){
+            lock.unlock();
+            LOG.debug("LOCK_RELEASED : key :{}",lockKey);
+         }
+         sample.stop(Timer.builder("distributed_lock.duration")
+                 .tag("key_prefix",extractPrefix(lockKey))
+                 .register(meterRegistry)
+         );
+      }
+       return null;
    }
 
    private String extractPrefix(String lockKey) {
