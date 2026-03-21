@@ -18,6 +18,12 @@ public interface Constants {
         public static final String FAILED = "payment-failed";
         public static final String COMPENSATED_DEBIT = "compensated-debit";
     }
+    public interface Lock{
+        String ACCOUNT_LOCK_PREFIX = "account:lock";
+        String PAYMENT_LOCK_PREFIX = "payment:lock";
+        long WAIT_TIMEOUT_SECONDS = 5;
+        long LEASE_SECONDS = 30;
+    }
 
     public static final String SYSTEM = "system";
 
