@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import payment.gateway.exception.InsufficientFundException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -64,6 +65,28 @@ public class Account {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+    /** Debit available balance  */
+    public void debit(BigDecimal amount){
+        validateActive();
+        if(availableBalance.compareTo(amount) < 0){
+           throw new InsufficientFundException("Insufficient Funds :  available=%.4f, requested=%.4f, account=%s"
+                   .formatted(availableBalance, amount, accountNumber));
+        }
+        this.availableBalance = this.availableBalance.subtract(amount);
+        this.ledgerBalance = this.ledgerBalance.subtract(amount);
+    }
+
+    /** Credit available balance  */
+    public void credit(BigDecimal amount){
+        validateActive();
+        this.availableBalance = this.availableBalance.add(amount);
+        this.ledgerBalance = this.ledgerBalance.add(amount);
+    }
+    private void validateActive(){
+        if(status != AccountStatus.ACTIVE){
+            throw new IllegalStateException("Account %s not active : %s".formatted(accountNumber,status));
+        }
+    }
 
     public enum AccountStatus { ACTIVE, SUSPENDED, CLOSED }
 

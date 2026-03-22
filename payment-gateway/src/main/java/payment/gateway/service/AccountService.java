@@ -6,12 +6,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import payment.gateway.domain.model.Account;
 import payment.gateway.exception.InvalidPaymentException;
 import payment.gateway.infrastructure.redis.DistributedLockService;
 import payment.gateway.repository.AccountRepository;
 import payment.gateway.repository.TransactionRepository;
 import payment.gateway.saga.events.PaymentInitiatedEvent;
 import payment.gateway.saga.events.SagaEvent;
+
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -39,7 +42,9 @@ public class AccountService {
                 throw new InvalidPaymentException("Source account not found : "+ event.sourceAccountId());
             }
             try{
-                /*TBD*/
+                Account debitAccount = account.get();
+                debitAccount.debit(event.amount());
+                accountRepository.save(debitAccount);
             }catch (Exception ex){
 
             }
