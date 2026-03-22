@@ -154,9 +154,32 @@ public class AccountService {
         });
 
     }
-
-    private void publishCompensation(PaymentDebitedEvent event, String destinationAccountNotFound) {
-        /*TBD*/
+    // Compensate the debit back to the source account if credit fails.
+    private void publishCompensation(PaymentDebitedEvent event, String reason) {
+        kafkaTemplate.send(KafkaConfig.TOPIC_COMPENSATE_DEBIT,
+                event.paymentId().toString(),
+                new CompensateDebitEvent(
+                        event.paymentId(),
+                        event.correlationId(),
+                        event.sourceAccountId(),
+                        event.amount(),
+                        event.currency(),
+                        reason,
+                        Instant.now()
+                )
+        );
+        kafkaTemplate.send(
+                KafkaConfig.TOPIC_PAYMENT_FAILED,
+                event.paymentId().toString(),
+                new PaymentFailedEvent(
+                        event.paymentId(),
+                        event.correlationId(),
+                        reason,
+                        TransactionType.CREDIT.name(),
+                        true,
+                        Instant.now()
+                )
+        );
     }
 
 
