@@ -115,6 +115,41 @@ public class EventHandlers {
            }
         });
     }
+    @KafkaListener(
+            topics = KafkaConfig.TOPIC_PAYMENT_CREDITED,
+            groupId = KafkaConstants.KAFKA_LEDGER_GROUP,
+            containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
+    )
+    public void onPaymentCredited(){
+        /*TBD*/
+    }
+
+    @KafkaListener(
+            topics = KafkaConfig.TOPIC_PAYMENT_SETTLED,
+            groupId = KafkaConstants.KAFKA_SETTLE_GROUP,
+            containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
+    )
+    public void onPaymentSettled(){
+        /*TBD*/
+    }
+
+    @KafkaListener(
+            topics = KafkaConfig.TOPIC_PAYMENT_FAILED,
+            groupId = KafkaConstants.KAFKA_FAILURE_GROUP,
+            containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
+    )
+    public void onPaymentFailed(){
+        /*TBD*/
+    }
+
+    @KafkaListener(
+            topics = KafkaConfig.TOPIC_COMPENSATE_DEBIT,
+            groupId = KafkaConstants.KAFKA_COMPENSATE_GROUP,
+            containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
+    )
+    public void onCompensationDebit(){
+        /*TBD*/
+    }
 
     private void moveMDC(UUID paymentId, String correlationId, String step, Runnable action){
         MDC.put("paymentId",paymentId.toString());
