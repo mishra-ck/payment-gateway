@@ -14,10 +14,7 @@ import payment.gateway.infrastructure.kafka.KafkaConfig;
 import payment.gateway.infrastructure.redis.DistributedLockService;
 import payment.gateway.repository.AccountRepository;
 import payment.gateway.repository.TransactionRepository;
-import payment.gateway.saga.events.PaymentDebitedEvent;
-import payment.gateway.saga.events.PaymentFailedEvent;
-import payment.gateway.saga.events.PaymentInitiatedEvent;
-import payment.gateway.saga.events.SagaEvent;
+import payment.gateway.saga.events.*;
 
 import java.time.Instant;
 
@@ -30,12 +27,14 @@ public class AccountService {
     private final DistributedLockService  lockService;
 
     private final KafkaTemplate<String, SagaEvent> kafkaTemplate ;
-    public AccountService(AccountRepository accountRepository, TransactionRepository transactionRepository, DistributedLockService lockService, KafkaTemplate<String, SagaEvent> kafkaTemplate) {
+    public AccountService(AccountRepository accountRepository, TransactionRepository transactionRepository,
+                          DistributedLockService lockService, KafkaTemplate<String, SagaEvent> kafkaTemplate) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
         this.lockService = lockService;
         this.kafkaTemplate = kafkaTemplate;
     }
+    // Saga : Handle Payment Initiated Event --> Apply Debit Event
     @Transactional
     public void processDebit(PaymentInitiatedEvent event) {
         LOG.info("SAGA_DEBIT_START : paymentId :{},account={}, amount={}, currency={}",
@@ -100,5 +99,65 @@ public class AccountService {
             return null;
         });
     }
+
+    // Saga : Handle Payment Debit Event --> Trigger Credit Event
+    public void processCredit(PaymentDebitedEvent event){
+        LOG.info("SAGA_CREDIT_START : paymentId :{},account={}, amount={}, currency={}",
+                event.paymentId(),event.destinationAccountId(),event.amount(),event.currency());
+
+        lockService.withAccountLock(event.destinationAccountId(), () ->{
+
+            var account = accountRepository.findByIdWithLock(event.destinationAccountId())
+                    .orElseThrow( () -> {
+                        publishCompensation(event,"Destination Account Not Found");
+                        return new InvalidPaymentException("Destination Account Not Found");
+                    });
+            try{
+                account.credit(event.amount());
+                accountRepository.save(account);
+
+                var txn = Transaction.credit(
+                        event.paymentId(),
+                        event.destinationAccountId(),
+                        event.amount(),
+                        event.currency(),
+                        account.getAvailableBalance(),
+                        event.correlationId()
+                );
+                transactionRepository.save(txn);
+
+                var creditEvent = new PaymentCreditedEvent(
+                        event.paymentId(),
+                        event.correlationId(),
+                        event.sourceAccountId(),
+                        event.destinationAccountId(),
+                        event.amount(),
+                        event.currency(),
+                        account.getAvailableBalance(),
+                        txn.getId(),
+                        Instant.now()
+                );
+
+                kafkaTemplate.send(
+                        KafkaConfig.TOPIC_PAYMENT_CREDITED,
+                        event.paymentId().toString(),
+                        creditEvent
+                );
+                LOG.info("SAGA_CREDIT_OK:paymentId:{}, txnId:{}",event.paymentId()
+                ,txn.getId());
+
+            }catch(Exception ex){
+                LOG.error("SAGA_CREDIT_FAILED: paymentId:{}, error:{}",event.paymentId(),ex.getMessage());
+                publishCompensation(event, ex.getMessage());
+            }
+            return null;
+        });
+
+    }
+
+    private void publishCompensation(PaymentDebitedEvent event, String destinationAccountNotFound) {
+        /*TBD*/
+    }
+
 
 }
