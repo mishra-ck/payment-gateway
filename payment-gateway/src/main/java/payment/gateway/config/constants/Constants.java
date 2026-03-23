@@ -2,29 +2,29 @@ package payment.gateway.config.constants;
 
 public interface Constants {
 
-    public interface Endpoint{
-        public static final String BASE_PATH = "/api";
-        public static final String VERSION_V1 = "/v1";
-        public static final String PAYMENTS = "payments";
+     interface Endpoint{
+         String BASE_PATH = "/api";
+         String VERSION_V1 = "/v1";
+         String PAYMENTS = "payments";
     }
 
-    public interface PaymentStatus{
-        public static final String INITIATED = "payment-initiated";
-        public static final String PENDING = "payment-pending";
-        public static final String PROCESSING = "payment-processing";
-        public static final String DEBITED = "payment-debited";
-        public static final String CREDITED = "payment-credited";
-        public static final String SETTLED = "payment-settled";
-        public static final String FAILED = "payment-failed";
-        public static final String COMPENSATED_DEBIT = "compensated-debit";
+     interface PaymentStatus{
+         String INITIATED = "payment-initiated";
+         String PENDING = "payment-pending";
+         String PROCESSING = "payment-processing";
+         String DEBITED = "payment-debited";
+         String CREDITED = "payment-credited";
+         String SETTLED = "payment-settled";
+         String FAILED = "payment-failed";
+         String COMPENSATED_DEBIT = "compensated-debit";
     }
-    public interface Lock{
+     interface Lock{
         String ACCOUNT_LOCK_PREFIX = "account:lock";
         String PAYMENT_LOCK_PREFIX = "payment:lock";
         long WAIT_TIMEOUT_SECONDS = 5;
         long LEASE_SECONDS = 30;
     }
 
-    public static final String SYSTEM = "system";
+     String SYSTEM = "system";
 
 }
