@@ -116,12 +116,21 @@ public class EventHandlers {
            }
         });
     }
+
     @KafkaListener(
             topics = KafkaConfig.TOPIC_PAYMENT_CREDITED,
             groupId = KafkaConstants.KAFKA_LEDGER_GROUP,
             containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
     )
-    public void onPaymentCredited(ConsumerRecord<String,SagaEvent> record, Acknowledgment ack){
+    public void onPaymentCredited(){
+        /*TBD*/
+    }
+    @KafkaListener(
+            topics = KafkaConfig.TOPIC_PAYMENT_SETTLED,
+            groupId = KafkaConstants.KAFKA_SETTLE_GROUP,
+            containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
+    )
+    public void onPaymentSettled(ConsumerRecord<String,SagaEvent> record, Acknowledgment ack){
         var event = (PaymentSettledEvent)record.value();
 
         moveMDC(event.paymentId(), event.correlationId(), "SETTLED",() ->{
@@ -136,15 +145,6 @@ public class EventHandlers {
             ack.acknowledge();
             LOG.info("SAGA_SETTLED : paymentId={}",event.paymentId());
         });
-    }
-
-    @KafkaListener(
-            topics = KafkaConfig.TOPIC_PAYMENT_SETTLED,
-            groupId = KafkaConstants.KAFKA_SETTLE_GROUP,
-            containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
-    )
-    public void onPaymentSettled(){
-        /*TBD*/
     }
 
     @KafkaListener(
