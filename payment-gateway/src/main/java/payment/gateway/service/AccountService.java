@@ -183,4 +183,7 @@ public class AccountService {
     }
 
 
+    public void processCompensatingCredit(CompensateDebitEvent event) {
+        /*TODO*/
+    }
 }

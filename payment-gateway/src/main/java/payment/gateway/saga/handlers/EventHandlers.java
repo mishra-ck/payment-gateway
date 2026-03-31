@@ -203,8 +203,28 @@ public class EventHandlers {
             groupId = KafkaConstants.KAFKA_COMPENSATE_GROUP,
             containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
     )
-    public void onCompensationDebit(){
-        /*TBD*/
+    public void onCompensationDebit(ConsumerRecord<String,SagaEvent> record, Acknowledgment ack){
+        var event = (CompensateDebitEvent)record.value();
+        var sagaKey = "compensate:" + event.paymentId();
+
+        moveMDC(event.paymentId(), event.correlationId(), "COMPENSATE",()->{
+            if(idempotencyHandlers.alreadyProcessed(sagaKey)){
+                LOG.warn("SAGA_COMPENSATE_SKIP : already compensated");
+                ack.acknowledge();
+                return;
+            }
+            try{
+                accountService.processCompensatingCredit(event);
+                idempotencyHandlers.markProcessed(sagaKey);
+                meterRegistry.counter("saga.compensation.applied").increment();
+                ack.acknowledge();
+            }catch (Exception ex){
+                LOG.error("SAGA_COMPENSATE_ERROR : paymentId={} - Manual Check Needed",event.paymentId(),ex);
+                meterRegistry.counter("saga.compensation.failed").increment();
+                throw ex;
+            }
+        });
+
     }
 
     private void moveMDC(UUID paymentId, String correlationId, String step, Runnable action){
