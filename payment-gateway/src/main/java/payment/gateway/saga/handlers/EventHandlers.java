@@ -60,7 +60,7 @@ public class EventHandlers {
         var sagaKey = "debit:"+event.paymentId();
 
         moveMDC(event.paymentId(),event.correlationId(), "DEBIT", () ->{
-            if(idempotencyHandlers.alredyProcessed(sagaKey)){
+            if(idempotencyHandlers.alreadyProcessed(sagaKey)){
                 LOG.info("SAGA_DEBIT_SKIP: already processed, sagaKey:{}",sagaKey);
                 ack.acknowledge();
                 return;
@@ -92,7 +92,7 @@ public class EventHandlers {
         var sagaKey = "credit:"+event.paymentId();
 
         moveMDC(event.paymentId(), event.correlationId(), "CREDIT",()->{
-           if(idempotencyHandlers.alredyProcessed(sagaKey)){
+           if(idempotencyHandlers.alreadyProcessed(sagaKey)){
                LOG.info("SAGA_CREDIT_SKIP: already processed");
                ack.acknowledge();
                return;
