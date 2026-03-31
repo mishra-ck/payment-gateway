@@ -13,6 +13,7 @@ import payment.gateway.config.constants.Constants;
 import payment.gateway.config.constants.KafkaConstants;
 import payment.gateway.domain.model.PaymentStatus;
 import payment.gateway.infrastructure.kafka.KafkaConfig;
+import payment.gateway.saga.events.PaymentCreditedEvent;
 import payment.gateway.saga.events.PaymentInitiatedEvent;
 import payment.gateway.saga.events.PaymentSettledEvent;
 import payment.gateway.saga.events.SagaEvent;
@@ -122,8 +123,26 @@ public class EventHandlers {
             groupId = KafkaConstants.KAFKA_LEDGER_GROUP,
             containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
     )
-    public void onPaymentCredited(){
-        /*TBD*/
+    public void onPaymentCredited(ConsumerRecord<String,SagaEvent> record, Acknowledgment ack){
+        var event = (PaymentCreditedEvent)record.value();
+        var sagaKey = "ledger"+ event.paymentId();
+
+        moveMDC(event.paymentId(), event.correlationId(),"LEDGER",() ->{
+            if(idempotencyHandlers.alreadyProcessed(sagaKey)){
+                ack.acknowledge();
+                return;
+            }
+            try{
+                ledgerService.recordPaymentLedgerEntries(event);
+                idempotencyHandlers.markProcessed(sagaKey);
+                meterRegistry.counter("saga.event.processed","event", Constants.PaymentStatus.CREDITED).increment();
+                ack.acknowledge();
+            }catch (Exception ex){
+                LOG.error("SAGA_LEDGER_ERROR : paymentId={}",event.paymentId(),ex);
+                meterRegistry.counter("saga.event.failed","event","PAYMENT_CREDITED").increment();
+                throw ex ;
+            }
+        });
     }
     @KafkaListener(
             topics = KafkaConfig.TOPIC_PAYMENT_SETTLED,
