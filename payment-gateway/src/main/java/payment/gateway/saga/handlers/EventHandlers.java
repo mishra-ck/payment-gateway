@@ -14,6 +14,7 @@ import payment.gateway.config.constants.KafkaConstants;
 import payment.gateway.domain.model.PaymentStatus;
 import payment.gateway.infrastructure.kafka.KafkaConfig;
 import payment.gateway.saga.events.PaymentInitiatedEvent;
+import payment.gateway.saga.events.PaymentSettledEvent;
 import payment.gateway.saga.events.SagaEvent;
 import payment.gateway.service.AccountService;
 import payment.gateway.service.LedgerService;
@@ -120,8 +121,21 @@ public class EventHandlers {
             groupId = KafkaConstants.KAFKA_LEDGER_GROUP,
             containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
     )
-    public void onPaymentCredited(){
-        /*TBD*/
+    public void onPaymentCredited(ConsumerRecord<String,SagaEvent> record, Acknowledgment ack){
+        var event = (PaymentSettledEvent)record.value();
+
+        moveMDC(event.paymentId(), event.correlationId(), "SETTLED",() ->{
+            paymentService.transitionPaymentStatus(
+                    event.paymentId(),
+                    PaymentStatus.settled(),
+                    event.correlationId(),
+                    "Ledger entries recorded, journalId="+event.journalId()
+            );
+
+            meterRegistry.counter("saga.event.processed", "event",Constants.PaymentStatus.SETTLED).increment();
+            ack.acknowledge();
+            LOG.info("SAGA_SETTLED : paymentId={}",event.paymentId());
+        });
     }
 
     @KafkaListener(
