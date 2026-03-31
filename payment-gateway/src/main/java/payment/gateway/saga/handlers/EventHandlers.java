@@ -28,6 +28,9 @@ import java.util.UUID;
  * KAFKA Listener are configured in this handler.
  * This handler has the responsibility of delegating request to service layer.
  * Sets up MDC context for logging/tracing purpose.
+ *
+ * PaymentId- used as Kafka Message Key
+ * Therefore same payment will always go to same partition
  */
 @Component
 @Slf4j
@@ -118,6 +121,7 @@ public class EventHandlers {
         });
     }
 
+    /** payment.credited --> write the ledger entries */
     @KafkaListener(
             topics = KafkaConfig.TOPIC_PAYMENT_CREDITED,
             groupId = KafkaConstants.KAFKA_LEDGER_GROUP,
@@ -144,6 +148,7 @@ public class EventHandlers {
             }
         });
     }
+    /** payment.settled  --> mark payment settled */
     @KafkaListener(
             topics = KafkaConfig.TOPIC_PAYMENT_SETTLED,
             groupId = KafkaConstants.KAFKA_SETTLE_GROUP,
