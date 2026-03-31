@@ -11,12 +11,10 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 import payment.gateway.config.constants.Constants;
 import payment.gateway.config.constants.KafkaConstants;
+import payment.gateway.config.enums.SagaStep;
 import payment.gateway.domain.model.PaymentStatus;
 import payment.gateway.infrastructure.kafka.KafkaConfig;
-import payment.gateway.saga.events.PaymentCreditedEvent;
-import payment.gateway.saga.events.PaymentInitiatedEvent;
-import payment.gateway.saga.events.PaymentSettledEvent;
-import payment.gateway.saga.events.SagaEvent;
+import payment.gateway.saga.events.*;
 import payment.gateway.service.AccountService;
 import payment.gateway.service.LedgerService;
 import payment.gateway.service.PaymentService;
@@ -171,13 +169,33 @@ public class EventHandlers {
         });
     }
 
+    /** payment.failed  --> mark FAILED, publish compensate if debit already done */
     @KafkaListener(
             topics = KafkaConfig.TOPIC_PAYMENT_FAILED,
             groupId = KafkaConstants.KAFKA_FAILURE_GROUP,
             containerFactory = KafkaConstants.LISTENER_CONTAINER_FACTORY
     )
-    public void onPaymentFailed(){
-        /*TBD*/
+    public void onPaymentFailed(ConsumerRecord<String,SagaEvent> record, Acknowledgment ack){
+        var event = (PaymentFailedEvent)record.value();
+
+        moveMDC(event.paymentId(), event.correlationId(), "FAIL",()->{
+            var step = SagaStep.valueOf(event.failedAtStep());
+
+            paymentService.transitionPaymentStatus(
+                    event.paymentId(),
+                    PaymentStatus.failed(event.failureReason(),step.name()),
+                    event.correlationId(),
+                    "Saga failed at step: "+ event.failedAtStep()
+            );
+            if(event.debitApplied()){
+                ledgerService.reverseLedgerEntries(event.paymentId(),event.correlationId());
+            }
+
+            meterRegistry.counter("saga.event.processed","event", Constants.PaymentStatus.FAILED).increment();
+            meterRegistry.counter("payment.failed","step",event.failedAtStep()).increment();
+            ack.acknowledge();
+            LOG.warn("SAGA_FAILED : paymentId={},reason={}",event.paymentId(),event.failureReason());
+        });
     }
 
     @KafkaListener(

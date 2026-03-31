@@ -56,7 +56,7 @@ public sealed interface PaymentStatus permits
         }
     }
 
-    record Failed(String reason) implements PaymentStatus{
+    record Failed(String reason,String step) implements PaymentStatus{
         @Override
         public String code() {
             return Constants.PaymentStatus.FAILED;
@@ -75,8 +75,8 @@ public sealed interface PaymentStatus permits
     static PaymentStatus pending()    { return new Pending(); }
     static PaymentStatus processing() { return new Processing(); }
     static PaymentStatus settled()    { return new Settled(); }
-    static PaymentStatus failed(String reason) {
-        return new Failed(reason);
+    static PaymentStatus failed(String reason,String step) {
+        return new Failed(reason,step);
     }
 
     static PaymentStatus fromCode(String code){

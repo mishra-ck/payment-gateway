@@ -95,7 +95,7 @@ public class Payment {
     }
      public PaymentStatus getStatus(){
         if(Constants.PaymentStatus.FAILED.equals(statusCode)){
-            return PaymentStatus.failed(failureReason);
+            return PaymentStatus.failed(failureReason,failureStep);
         }else{
             return PaymentStatus.fromCode(statusCode);
         }
