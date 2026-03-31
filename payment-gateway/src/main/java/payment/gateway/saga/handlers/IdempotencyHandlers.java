@@ -21,13 +21,18 @@ public class IdempotencyHandlers {
     public IdempotencyHandlers(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
+
     /** @return true is the saga step is already processed successfully */
     public boolean alreadyProcessed(String sagaKey) {
         return Boolean.TRUE.equals(
                 redisTemplate.hasKey(PREFIX+sagaKey)
         );
     }
+    /**
+     * Marks a saga step as successfully processed
+     */
     public void markProcessed(String sagaKey) {
-        /*TBD*/
+        redisTemplate.opsForValue()
+                .setIfAbsent(PREFIX + sagaKey,"1",TTL);
     }
 }
