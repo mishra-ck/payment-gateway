@@ -90,7 +90,7 @@ public class EventHandlers {
     )
     public void onPaymentDebited(ConsumerRecord<String, SagaEvent> record, Acknowledgment ack){
 
-        var event = (PaymentInitiatedEvent)record.value();
+        var event = (PaymentDebitedEvent) record.value();
         var sagaKey = "credit:"+event.paymentId();
 
         moveMDC(event.paymentId(), event.correlationId(), "CREDIT",()->{

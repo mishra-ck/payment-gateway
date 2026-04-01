@@ -55,5 +55,8 @@ public class Transaction {
                 .correlationId(correlationId)
                 .build();
     }
-
+    public static Transaction compensatingCredit(UUID uuid, UUID uuid1, BigDecimal amount, String currency, BigDecimal availableBalance, String s) {
+        /*TODO*/
+        return null;
+    }
 }

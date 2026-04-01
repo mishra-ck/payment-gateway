@@ -25,7 +25,6 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final DistributedLockService  lockService;
-
     private final KafkaTemplate<String, SagaEvent> kafkaTemplate ;
     public AccountService(AccountRepository accountRepository, TransactionRepository transactionRepository,
                           DistributedLockService lockService, KafkaTemplate<String, SagaEvent> kafkaTemplate) {
@@ -152,8 +151,38 @@ public class AccountService {
             }
             return null;
         });
-
     }
+    @Transactional
+    public void processCompensatingCredit(CompensateDebitEvent event) {
+        LOG.warn("SAGA_COMPENSATE_START: paymentId={},account={},amount={}",
+            event.paymentId(),event.amount(),event.amount());
+
+        lockService.withAccountLock(event.sourceAccountId(),() ->{
+           var account = accountRepository.findByIdWithLock(event.sourceAccountId())
+                   .orElseThrow( ()-> new RuntimeException(
+                           "Cannot Compensate, account not found:" + event.sourceAccountId()
+                   ));
+
+           account.credit(event.amount());  // reversing the debit
+           accountRepository.save(account);
+
+           var compensatingTxn = Transaction.compensatingCredit(
+                event.paymentId(),
+                   event.sourceAccountId(),
+                   event.amount(),
+                   event.currency(),
+                   account.getAvailableBalance(),
+                   event.correlationId()
+           );
+            assert compensatingTxn != null;
+            transactionRepository.save(compensatingTxn);
+
+           LOG.warn("SAGA_COMPENSATE_DONE: paymentId={},compensatingTxnId={}"
+                   ,event.paymentId(),compensatingTxn.getId());
+           return null;
+        });
+    }
+
     // Compensate the debit back to the source account if credit fails.
     private void publishCompensation(PaymentDebitedEvent event, String reason) {
         kafkaTemplate.send(KafkaConfig.TOPIC_COMPENSATE_DEBIT,
@@ -180,14 +209,5 @@ public class AccountService {
                         Instant.now()
                 )
         );
-    }
-
-
-    public void processCompensatingCredit(CompensateDebitEvent event) {
-        /*TODO*/
-    }
-
-    public void processCredit(PaymentInitiatedEvent event) {
-        /*TODO*/
     }
 }

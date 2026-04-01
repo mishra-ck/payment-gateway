@@ -231,7 +231,5 @@ public class PaymentService {
 
         paymentRepository.save(payment);
         LOG.info("PAYMENT_STATUS_TRANSITION : paymentId={},{} -> {}",paymentId,oldStatus,newStatus.code());
-
     }
-
 }
