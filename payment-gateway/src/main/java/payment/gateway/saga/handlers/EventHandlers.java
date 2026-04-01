@@ -198,6 +198,7 @@ public class EventHandlers {
         });
     }
 
+    /**  payment.compensate.debit --> reverse debited payment  */
     @KafkaListener(
             topics = KafkaConfig.TOPIC_COMPENSATE_DEBIT,
             groupId = KafkaConstants.KAFKA_COMPENSATE_GROUP,

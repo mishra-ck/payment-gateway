@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import payment.gateway.config.constants.Constants;
@@ -20,12 +21,14 @@ import payment.gateway.domain.model.PaymentEvent;
 import payment.gateway.domain.model.PaymentStatus;
 import payment.gateway.exception.InvalidPaymentException;
 import payment.gateway.exception.PaymentNotFoundException;
+import payment.gateway.infrastructure.kafka.KafkaConfig;
 import payment.gateway.repository.AccountRepository;
 import payment.gateway.repository.IdempotencyRepository;
 import payment.gateway.repository.PaymentRepository;
 import payment.gateway.saga.events.PaymentInitiatedEvent;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.InvalidPropertiesFormatException;
 import java.util.UUID;
 
@@ -40,13 +43,15 @@ public class PaymentService {
     private final Counter paymentsInitiated;
     private final MeterRegistry meterRegistry;
     private final ObjectMapper objectMapper;
+    private final KafkaTemplate kafkaTemplate;
 
-    public PaymentService(PaymentRepository paymentRepository, IdempotencyRepository idempotencyRepository, Counter paymentDeduped, AccountRepository accountRepository, Counter paymentsInitiated, MeterRegistry meterRegistry, ObjectMapper objectMapper) {
+    public PaymentService(PaymentRepository paymentRepository, IdempotencyRepository idempotencyRepository, Counter paymentDeduped, AccountRepository accountRepository, Counter paymentsInitiated, MeterRegistry meterRegistry, ObjectMapper objectMapper, KafkaTemplate kafkaTemplate) {
         this.paymentRepository = paymentRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.accountRepository = accountRepository;
         this.meterRegistry = meterRegistry;
         this.objectMapper = objectMapper;
+        this.kafkaTemplate = kafkaTemplate;
         this.paymentDuped = Counter.builder("payment.duplicated")
                 .description("Payment returned from idempotency cache").register(this.meterRegistry);
         this.paymentsInitiated = Counter.builder("payment-initiated")
@@ -109,7 +114,26 @@ public class PaymentService {
 
             MDC.put("paymentId",payment.getId().toString());
 
-            /* TBD*/
+            /** Step-4 --------- Publish to Kafka event -------------- */
+            var event = new PaymentInitiatedEvent(
+                    payment.getId(),
+                    idempotencyKey,
+                    request.sourceAccountId(),
+                    request.targetAccountId(),
+                    request.amount(),
+                    request.currency(),
+                    Instant.now()
+            );
+            kafkaTemplate.send(
+                    KafkaConfig.TOPIC_PAYMENT_INITIATED,  // topic name
+                    payment.getId().toString(),  // partition key - routes same payment to same partition
+                    event   // data
+            ).whenComplete( (result,ex) -> {
+                if(ex != null){  // exception occurred
+                    LOG.error("KAFKA_PUBLISH_FAILED : paymentId={}",payment.getId(),ex);
+                    // This payment needs to re-tried again
+                }
+            });
 
             /** STEP-5 ---------- Save Idempotency Record  ------------*/
             var response = toPaymentResponse(payment);
@@ -126,7 +150,6 @@ public class PaymentService {
             MDC.remove("idempotencyKey");
             MDC.remove("paymentId");
         }
-
     }
 
     private void saveIdempotencyRecord(String idempotencyKey, UUID id, int status, PaymentResponse response) {
@@ -186,10 +209,10 @@ public class PaymentService {
     }
 
     public void transitionPaymentStatus(UUID uuid, PaymentStatus processing, String s, String s1) {
-        /* TBD - Implementation */
+        /*TODO*/
     }
 
     public void processCredit(PaymentInitiatedEvent event) {
-        /*TBD - Implementation */
+        /*TODO*/
     }
 }
