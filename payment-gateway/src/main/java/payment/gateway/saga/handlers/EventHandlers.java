@@ -76,7 +76,7 @@ public class EventHandlers {
             }catch (Exception e){
                 LOG.error("SAGA_DEBIT_FAILED, paymentId:{},error:{}",event.paymentId(),e.getMessage(),e);
                 meterRegistry.counter("saga.event.failed","event",Constants.PaymentStatus.INITIATED).increment();
-                /*TBD -  ack in fail case */
+                /*TODO -  ack in fail case */
                 throw e;
             }
         });
