@@ -87,5 +87,13 @@ public sealed interface PaymentStatus permits
             default ->  throw new IllegalArgumentException("Unknown status: "+ code);
         };
     }
+    default boolean canTransitionTo(PaymentStatus next) {
+        return switch (this) {
+            case Pending    p -> next instanceof Processing || next instanceof Failed;
+            case Processing p -> next instanceof Settled   || next instanceof Failed;
+            case Settled    s -> false;
+            case Failed     f -> false;
+        };
+    }
 
 }

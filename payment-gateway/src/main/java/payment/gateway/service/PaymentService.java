@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.InvalidPropertiesFormatException;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -60,7 +61,7 @@ public class PaymentService {
 
     @Transactional
     public PaymentResponse initiatePayment(PaymentRequest request, String idempotencyKey) {
-        /* TBD - rate limiter need to be added */
+       /*TODO*/
         return doInitiatePayment(request,idempotencyKey);
     }
     private PaymentResponse doInitiatePayment(PaymentRequest request, String idempotencyKey){
@@ -128,9 +129,9 @@ public class PaymentService {
                     KafkaConfig.TOPIC_PAYMENT_INITIATED,  // topic name
                     payment.getId().toString(),  // partition key - routes same payment to same partition
                     event   // data
-            ).whenComplete( (result,ex) -> {
-                if(ex != null){  // exception occurred
-                    LOG.error("KAFKA_PUBLISH_FAILED : paymentId={}",payment.getId(),ex);
+            ).whenComplete((result, ex) -> {
+                if (ex != null) {  // exception occurred
+                    LOG.error("KAFKA_PUBLISH_FAILED : paymentId={}", payment.getId(), ex);
                     // This payment needs to re-tried again
                 }
             });
@@ -208,11 +209,29 @@ public class PaymentService {
         );
     }
 
-    public void transitionPaymentStatus(UUID uuid, PaymentStatus processing, String s, String s1) {
-        /*TODO*/
+    @Transactional
+    public void transitionPaymentStatus(UUID paymentId, PaymentStatus newStatus,
+                                        String correlationId, String detail) {
+        var payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new PaymentNotFoundException("Payment not found : "+ paymentId));
+
+        var oldStatus = payment.getStatusCode();
+        payment.transitionTo(newStatus);
+
+        var event = PaymentEvent.builder()
+                .eventType("STATUS_TRANSITION")
+                .fromStatus(oldStatus)
+                .toStatus(newStatus.code())
+                .updatedBy("saga")
+                .detail(detail)
+                .correlationId(correlationId)
+                .build();
+
+        payment.addEvent(event);
+
+        paymentRepository.save(payment);
+        LOG.info("PAYMENT_STATUS_TRANSITION : paymentId={},{} -> {}",paymentId,oldStatus,newStatus.code());
+
     }
 
-    public void processCredit(PaymentInitiatedEvent event) {
-        /*TODO*/
-    }
 }

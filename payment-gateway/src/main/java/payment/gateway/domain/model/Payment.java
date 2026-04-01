@@ -101,5 +101,21 @@ public class Payment {
         }
      }
 
+     public void transitionTo(PaymentStatus newStatus){
+        var current = getStatus();
+        if(current.canTransitionTo(newStatus)){
+           this.statusCode = newStatus.code();
+        }else{
+            throw new IllegalStateException("Illegal Payment Transition : %s -> %s (paymentId = %s)"
+                    .formatted(current.code(),newStatus.code(), id));
+        }
+         if (newStatus instanceof PaymentStatus.Failed fail) {
+             this.failureReason = fail.reason();
+             this.failureStep   = fail.step();
+         }
+         if (newStatus instanceof PaymentStatus.Settled) {
+             this.settledAt = Instant.now();
+         }
+     }
 
 }

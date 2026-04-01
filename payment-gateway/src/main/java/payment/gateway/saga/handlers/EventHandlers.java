@@ -108,7 +108,7 @@ public class EventHandlers {
             );
 
            try{
-               paymentService.processCredit(event);
+               accountService.processCredit(event);
                idempotencyHandlers.markProcessed(sagaKey);
                meterRegistry.counter("saga.event.processed","event",Constants.PaymentStatus.DEBITED).increment();
                ack.acknowledge();
