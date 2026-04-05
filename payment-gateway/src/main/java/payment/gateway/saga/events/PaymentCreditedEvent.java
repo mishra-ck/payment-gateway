@@ -15,10 +15,10 @@ public record PaymentCreditedEvent(
         UUID paymentId,
         String correlationId,
         UUID sourceAccountId,
-        UUID destinationAccountId,
+        UUID targetAccountId,
         BigDecimal amount,
         String currency,
-        BigDecimal destinationBalanceAfter,
+        BigDecimal targetAccBalanceAfter,
         UUID creditTransactionId,
         Instant occurredAt
 ) implements SagaEvent {
