@@ -7,6 +7,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import payment.gateway.domain.model.LedgerEntry;
+import payment.gateway.exception.LedgerImbalanceException;
 import payment.gateway.infrastructure.kafka.KafkaConfig;
 import payment.gateway.repository.LedgerEntryRepository;
 import payment.gateway.saga.events.PaymentCreditedEvent;
@@ -57,7 +58,7 @@ public class LedgerService {
         );
 
         // verify balance before persist
-        /*TODO*/
+        assertBalanced(journalId,debitEntry,creditEntry);
 
         ledgerEntryRepository.saveAll(List.of(debitEntry,creditEntry));
 
@@ -98,4 +99,12 @@ public class LedgerService {
                     paymentId,reverseJournalId,reversals.size());
         }
     }
+
+    private void assertBalanced(UUID journalId, LedgerEntry debit, LedgerEntry credit){
+        if(debit.getAmount().compareTo(credit.getAmount()) != 0){
+            throw new LedgerImbalanceException("CRITICAL: Ledger imbalance for journalId=%s: DR=%s, CR=%s"
+                    .formatted(journalId, debit.getAmount(), credit.getAmount()));
+        }
+    }
+
 }
