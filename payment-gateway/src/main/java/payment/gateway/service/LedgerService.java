@@ -77,7 +77,25 @@ public class LedgerService {
         );
 
     }
-    public void reverseLedgerEntries(UUID uuid, String s) {
-        /*TODO*/
+    // Reverse Ledger entries for failed payments
+    @Transactional
+    public void reverseLedgerEntries(UUID paymentId, String correlationId) {
+
+        var entries = ledgerEntryRepository.findByPaymentId(paymentId);
+        if(entries.isEmpty()){
+            LOG.info("LEDGER_REVERSE_SKIPPED : no entries found for paymentId={}",paymentId);
+            return;
+        }
+
+        UUID reverseJournalId = UUID.randomUUID();
+        var reversals = entries.stream()
+                .filter(e -> !e.isReversal())
+                .map(e -> e.reverse(reverseJournalId))
+                .toList();
+        if(!reversals.isEmpty()){
+            ledgerEntryRepository.saveAll(reversals);
+            LOG.warn("LEDGER_REVERSED : paymentId={},reverseJournalId={},count={}",
+                    paymentId,reverseJournalId,reversals.size());
+        }
     }
 }
