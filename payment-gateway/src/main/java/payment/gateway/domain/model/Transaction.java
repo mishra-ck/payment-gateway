@@ -55,8 +55,16 @@ public class Transaction {
                 .correlationId(correlationId)
                 .build();
     }
-    public static Transaction compensatingCredit(UUID uuid, UUID uuid1, BigDecimal amount, String currency, BigDecimal availableBalance, String s) {
-        /*TODO*/
-        return null;
+    public static Transaction compensatingCredit(UUID paymentId, UUID accountId, BigDecimal amount,
+                                                 String currency, BigDecimal balanceAfter, String correlationId) {
+        return Transaction.builder()
+                .paymentId(paymentId)
+                .accountId(accountId)
+                .type(TransactionType.COMPENSATE_CREDIT)
+                .amount(amount)
+                .currency(currency)
+                .description("Compensating credit - saga rollback")
+                .correlationId(correlationId)
+                .build();
     }
 }

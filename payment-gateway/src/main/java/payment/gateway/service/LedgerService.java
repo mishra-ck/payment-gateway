@@ -34,7 +34,7 @@ public class LedgerService {
         LOG.info("LEDGER_RECORD_START : paymentId:{},amount:{} {}",
                 event.paymentId(), event.amount(),event.currency());
 
-        UUID journalId =UUID.randomUUID();
+        UUID journalId = UUID.randomUUID();
 
         // Debit Source account
         var debitEntry = LedgerEntry.debitEntry(
