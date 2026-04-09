@@ -10,7 +10,7 @@ description = 'Real Time Payment Processing Service'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
+		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
 
@@ -32,8 +32,8 @@ dependencies {
 	implementation 'org.flywaydb:flyway-core:10.8.1'
 	implementation 'org.flywaydb:flyway-database-postgresql:10.8.1'
 
-	implementation 'io.github.resilience4j:resilience4j-spring-boot3'
-	implementation 'io.github.resilience4j:resilience4j-micrometer'
+//	implementation 'io.github.resilience4j:resilience4j-spring-boot3'
+//	implementation 'io.github.resilience4j:resilience4j-micrometer'
 
 	implementation 'io.micrometer:micrometer-registry-prometheus'
 	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
@@ -42,10 +42,10 @@ dependencies {
 	implementation 'org.redisson:redisson-spring-boot-starter:3.27.1'
 
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-	implementation 'net.logstash.logback:logstash-logback-encoder'
+//	implementation 'net.logstash.logback:logstash-logback-encoder'
 
-	implementation 'org.mapstruct:mapstruct'
-	implementation 'org.mapstruct:mapstruct-processor'
+//	implementation 'org.mapstruct:mapstruct'
+//	implementation 'org.mapstruct:mapstruct-processor'
 
 	implementation 'io.swagger.core.v3:swagger-annotations:2.1.5'
 	implementation 'io.swagger.core.v3:swagger-core:2.1.5'
