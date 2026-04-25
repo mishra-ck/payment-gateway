@@ -4,3 +4,25 @@ global:
   external_labels:
     environment: 'docker'
     service:     'payment-gateway'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files: []
+
+scrape_configs:
+  # Payment Gateway
+  - job_name: 'payment-gateway'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['payment-gateway:8080']
+        labels:
+          application: 'payment-gateway'
+
+  # Self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
