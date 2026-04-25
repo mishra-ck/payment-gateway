@@ -32,3 +32,10 @@ CREATE INDEX idx_payments_dest_account      ON payments (destination_account_id)
 CREATE INDEX idx_payments_status            ON payments (status_code);
 CREATE INDEX idx_payments_created_at        ON payments (created_at DESC);
 CREATE INDEX idx_payments_settled_at        ON payments (settled_at DESC) WHERE settled_at IS NOT NULL;
+
+
+-- Trigger: update updated_at
+CREATE TRIGGER trg_payments_updated_at
+    BEFORE UPDATE ON payments
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
