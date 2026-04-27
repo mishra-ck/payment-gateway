@@ -25,6 +25,12 @@ public class ScheduledJobs {
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Scheduled(cron = "0 5 0 1 * *")
+    @Transactional
+    public void createNextPartition(){
+        /*TODO*/
+    }
+
     // Idempotency Cleanup - every 6 Hrs
     @Scheduled(fixedDelay = 6*3600*1000L, initialDelay = 60_000L)
     @Transactional
