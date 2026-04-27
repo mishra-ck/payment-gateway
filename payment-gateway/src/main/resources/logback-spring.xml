@@ -16,4 +16,10 @@
         </appender>
     </springProfile>
 
+    <!-- Payment Gateway — tracing saga flow -->
+    <logger name="payment.gateway" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_CONSOLE"/>
+        <appender-ref ref="ERROR_FILE"/>
+    </logger>
+
 </configuration>
