@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/default.xml"/>
+
+    <springProperty scope="context" name="appName" source="spring.application.name"/>
+    <springProperty scope="context" name="appEnv" source="APP_ENV" defaultValue="local"/>
+    <springProperty scope="context" name="appVersion" source="APP_VERSION" defaultValue="dev"/>
+
+    <springProfile name="local">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>
+                    %d{HH:mm:ss.SSS} %highlight(%-5level) %cyan(%logger{36}) [%X{paymentId:-no-payment}] [%X{sagaStep:-}] - %msg%n
+                </pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+</configuration>
