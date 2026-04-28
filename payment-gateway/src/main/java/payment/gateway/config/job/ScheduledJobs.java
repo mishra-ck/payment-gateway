@@ -35,7 +35,7 @@ public class ScheduledJobs {
     @Scheduled(cron = "0 5 0 1 * *")
     @Transactional
     public void createNextPartition(){
-         var nextNext = YearMonth.now().plusMonths(2;
+         var nextNext = YearMonth.now().plusMonths(2);
          var partitionName = "transactions_"+ nextNext.format(DateTimeFormatter.ofPattern("yyyy_MM"));
          var startDate = nextNext.atDay(1);
          var endDate = nextNext.plusMonths(1).atDay(1);
@@ -68,6 +68,11 @@ public class ScheduledJobs {
     }
 
     // 3. Stale payment recovery
+    /**
+     * Every 5 minutes - finds payment stuck in PENDING >30 minutes and force-fail them.
+     * It handles case where Kafka event was published but the consumer never processed(ex: outage)
+     */
+    @Scheduled(fixedDelay = 5 * 60 * 1000L, initialDelay = 1_20_000L)
     @Transactional
     public void recoverStalePendingPayments(){
         var cutOff = Instant.now().minus(30, ChronoUnit.MINUTES);
@@ -89,6 +94,11 @@ public class ScheduledJobs {
         }
     }
 
+    // 4. Ledger Reconciliation
+    /**
+     * Runs at 2:00 AM every day, verify Ledger is balanced
+     * Alert( via metric) if any journal has imbalanced Debit/Credit entries.
+     */
     @Transactional(readOnly = true)
     public void reconcileLedger(){
         /*TODO*/

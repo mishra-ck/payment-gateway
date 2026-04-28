@@ -193,3 +193,11 @@ logging:
   config: classpath:logback-spring.xml
 
 
+# ── App-specific ─────────────────────────────────────────────────────────────
+payment:
+  saga:
+    stale-payment-timeout-minutes: 30     # Force-fail PENDING payments older than this
+  idempotency:
+    ttl-hours: 24
+  reconciliation:
+    cron: "0 0 2 * * *"                   # Daily at 02:00 AM
