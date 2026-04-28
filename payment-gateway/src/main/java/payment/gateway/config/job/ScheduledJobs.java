@@ -15,6 +15,7 @@ import payment.gateway.repository.PaymentRepository;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 
 @Component
 @Slf4j
@@ -29,7 +30,7 @@ public class ScheduledJobs {
     @PersistenceContext
     private EntityManager entityManager;
 
-    // Partition Maintenance - runs at 12:05 AM every month on day 1
+    // 1. Partition Maintenance - runs at 12:05 AM every month on day 1
     // Stays 2 month ahead
     @Scheduled(cron = "0 5 0 1 * *")
     @Transactional
@@ -53,10 +54,9 @@ public class ScheduledJobs {
              log.error("PARTITION_MAINTENANCE_FAILED: {}", partitionName, e);
              meterRegistry.counter("partition.error").increment();
          }
-
     }
 
-    // Idempotency Cleanup - every 6 Hrs
+    // 2. Idempotency Cleanup - every 6 Hrs
     @Scheduled(fixedDelay = 6*3600*1000L, initialDelay = 60_000L)
     @Transactional
     public void cleanupExpiredIdempotencyRecords(){
@@ -67,9 +67,26 @@ public class ScheduledJobs {
         }
     }
 
+    // 3. Stale payment recovery
     @Transactional
     public void recoverStalePendingPayments(){
-        /*TODO*/
+        var cutOff = Instant.now().minus(30, ChronoUnit.MINUTES);
+        var stalePayments = paymentRepository.findStalePendingPayments(cutOff);
+
+        if(!stalePayments.isEmpty()){
+            log.warn("STALE_PAYMENT_RECOVERY: found {} stale payment", stalePayments.size());
+
+            stalePayments.forEach( payment -> {
+                int updated = paymentRepository.forceFailPayment(
+                        payment.getId(),
+                        "Payment timed out after 30 minutes in PENDING state"
+                );
+                if(updated > 0){
+                   log.warn("STALE_PAYMENT_FAILED: paymentId:{}", payment.getId());
+                   meterRegistry.counter("payment.stale.recovered").increment();
+                }
+            });
+        }
     }
 
     @Transactional(readOnly = true)
