@@ -13,6 +13,8 @@ import payment.gateway.repository.LedgerEntryRepository;
 import payment.gateway.repository.PaymentRepository;
 
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 
 @Component
 @Slf4j
@@ -28,10 +30,30 @@ public class ScheduledJobs {
     private EntityManager entityManager;
 
     // Partition Maintenance - runs at 12:05 AM every month on day 1
+    // Stays 2 month ahead
     @Scheduled(cron = "0 5 0 1 * *")
     @Transactional
     public void createNextPartition(){
-        /*TODO*/
+         var nextNext = YearMonth.now().plusMonths(2;
+         var partitionName = "transactions_"+ nextNext.format(DateTimeFormatter.ofPattern("yyyy_MM"));
+         var startDate = nextNext.atDay(1);
+         var endDate = nextNext.plusMonths(1).atDay(1);
+
+        log.info("PARTITION_MAINTENANCE: creating partition {}", partitionName);
+
+         try{
+             entityManager.createNativeQuery(
+                     "CREATE TABLE IF NOT EXISTS %s PARTITION OF transactions FOR VALUES FROM ('%s') TO ('%s')"
+                             .formatted(partitionName, startDate,endDate)
+             ).executeUpdate();
+             meterRegistry.counter("partition.created", "name", partitionName).increment();
+             log.info("PARTITION_MAINTENANCE_OK: {}", partitionName);
+
+         }catch(Exception e){
+             log.error("PARTITION_MAINTENANCE_FAILED: {}", partitionName, e);
+             meterRegistry.counter("partition.error").increment();
+         }
+
     }
 
     // Idempotency Cleanup - every 6 Hrs
@@ -50,4 +72,8 @@ public class ScheduledJobs {
         /*TODO*/
     }
 
+    @Transactional(readOnly = true)
+    public void reconcileLedger(){
+        /*TODO*/
+    }
 }
