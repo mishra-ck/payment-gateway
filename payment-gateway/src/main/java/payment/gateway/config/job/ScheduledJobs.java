@@ -45,4 +45,9 @@ public class ScheduledJobs {
         }
     }
 
+    @Transactional
+    public void recoverStalePendingPayments(){
+        /*TODO*/
+    }
+
 }

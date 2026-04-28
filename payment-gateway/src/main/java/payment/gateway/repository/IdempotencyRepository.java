@@ -14,7 +14,7 @@ import java.util.UUID;
 public interface IdempotencyRepository extends JpaRepository<IdempotencyRecord, UUID> {
     Optional<IdempotencyRecord> findByIdempotencyKey(String idempotencyKey);
 
-    /*TODO*/
-    @Query("")
+    /**  Cleanup expired records - called by scheduled job */
+    @Query("DELETE FROM IdempotencyRecord r where r.expiresAt < :now")
     int deleteExpiredRecords(@Param("now") Instant now);
 }
