@@ -101,6 +101,27 @@ public class ScheduledJobs {
      */
     @Transactional(readOnly = true)
     public void reconcileLedger(){
-        /*TODO*/
+        var yesterday = Instant.now().minus(1,ChronoUnit.DAYS);
+        var now = Instant.now();
+
+        log.info("LEDGER_RECONCILIATION : checking entries from {} to {}",yesterday,now);
+
+        var imbalanced = ledgerEntryRepository.findImbalancedJournals(yesterday, now);
+
+        if(imbalanced.isEmpty()){
+            log.info("LEDGER_RECONCILIATION_OK : ledger is balanced");
+            meterRegistry.gauge("ledger.imbalanced.journals",0);
+        }else{
+            log.error("LEDGER_RECONCILIATION_FAILED: {} imbalanced journals found!", imbalanced.size());
+            meterRegistry.gauge("ledger.imbalanced.journals", imbalanced.size());
+            meterRegistry.counter("ledger.reconciliation.failures").increment(imbalanced.size());
+
+            imbalanced.forEach(row -> {
+                // row[0]=journal_id, row[1]=total_dr, row[2]=total_cr
+                log.error("IMBALANCED_JOURNAL: journalId={}, DR={}, CR={}",
+                        row[0], row[1], row[2]);
+            });
+        }
+
     }
 }
