@@ -2,8 +2,12 @@ package payment.gateway.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.observation.annotation.Observed;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +35,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.InvalidPropertiesFormatException;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -42,11 +45,14 @@ public class PaymentService {
     private final AccountRepository accountRepository;
     private final Counter paymentDuped;
     private final Counter paymentsInitiated;
+    private final Timer initiationTimer;
     private final MeterRegistry meterRegistry;
     private final ObjectMapper objectMapper;
     private final KafkaTemplate kafkaTemplate;
 
-    public PaymentService(PaymentRepository paymentRepository, IdempotencyRepository idempotencyRepository, Counter paymentDeduped, AccountRepository accountRepository, Counter paymentsInitiated, MeterRegistry meterRegistry, ObjectMapper objectMapper, KafkaTemplate kafkaTemplate) {
+    public PaymentService(PaymentRepository paymentRepository, IdempotencyRepository idempotencyRepository,
+                          AccountRepository accountRepository, MeterRegistry meterRegistry,
+                          ObjectMapper objectMapper, KafkaTemplate kafkaTemplate) {
         this.paymentRepository = paymentRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.accountRepository = accountRepository;
@@ -57,12 +63,17 @@ public class PaymentService {
                 .description("Payment returned from idempotency cache").register(this.meterRegistry);
         this.paymentsInitiated = Counter.builder("payment-initiated")
                 .description("Total payment initiated").register(meterRegistry);
+        this.initiationTimer = Timer.builder("payment.initiation.duration")
+                .description("Time to initiate a payment").register(meterRegistry);
     }
 
+    /** -------- Initiate Payment --------- */
     @Transactional
+    @CircuitBreaker(name = "payment-service",fallbackMethod = "initiatePaymentFallback")
+    @RateLimiter(name = "payment-api",fallbackMethod = "rateLimitFallback")
+    @Observed(name = "payment.initiate",contextualName = "initiatePayment")
     public PaymentResponse initiatePayment(PaymentRequest request, String idempotencyKey) {
-       /*TODO*/
-        return doInitiatePayment(request,idempotencyKey);
+        return initiationTimer.record(() -> doInitiatePayment(request,idempotencyKey));
     }
     private PaymentResponse doInitiatePayment(PaymentRequest request, String idempotencyKey){
         MDC.put("idempotencyKey",idempotencyKey);
