@@ -1,5 +1,9 @@
 package payment.gateway.controller;
 
+import io.micrometer.observation.annotation.Observed;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -35,6 +39,23 @@ public class PaymentProcessController {
     /**--- Initiate Payment End Point  ----*/
     @PostMapping(Constants.Endpoint.VERSION_V1 + Constants.Endpoint.PAYMENTS)
     @ResponseStatus(HttpStatus.CREATED)
+    @Operation(
+            summary = "Initiate a payment",
+            description = "Create a new payment and starts the saga." +
+                    "Idempotent - returns same result with same X-Idempotency-Key",
+            parameters = {
+                    @Parameter(name = "X-Idempotency-Key", required = true,
+                    description = "Client generated UUID, stable across retries.")
+            },
+            responses = {
+                    @ApiResponse(responseCode = "201",description = "Payment initiated"),
+                    @ApiResponse(responseCode = "400",description = "Validation error"),
+                    @ApiResponse(responseCode = "409",description = "Duplicate idempotency key with different body"),
+                    @ApiResponse(responseCode = "429",description = "Rate limit exceeded"),
+                    @ApiResponse(responseCode = "503",description = "Service unavailable"),
+            }
+    )
+    @Observed(name = "api.payment.initiated")
     public ResponseEntity<PaymentResponse> initiatePayment(
         @RequestHeader("X-Idempotency-Key")
         @NotBlank(message = "X-Idempotency-Key header is required")
