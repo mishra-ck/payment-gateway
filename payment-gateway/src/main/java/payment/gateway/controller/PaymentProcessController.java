@@ -90,6 +90,15 @@ public class PaymentProcessController {
 
     /** ----------  GET Payment Details ---------- */
     @GetMapping(Constants.Endpoint.VERSION_V1 + "/{paymentId}")
+    @Operation(
+            summary = "Get payment status",
+            description = "Returns the current status and details of payment",
+            responses = {
+                    @ApiResponse(responseCode = "200",description = "Payment found"),
+                    @ApiResponse(responseCode = "404",description = "Payment not found")
+            }
+    )
+    @Observed(name = "api.payment.get")
     public ResponseEntity<PaymentResponse> getPaymentDetails(
             @PathVariable UUID paymentId,
             @RequestHeader(value = "X-Request-Id", required = false) String requestId
@@ -113,6 +122,15 @@ public class PaymentProcessController {
 
     /** ------- GET Payment history ----------- */
     @GetMapping(Constants.Endpoint.VERSION_V1+"/{paymentId}/history")
+    @Operation(
+            summary = "Get payment audit history",
+            description = "Returns the complete event history / audit trail for a payment",
+            responses = {
+                    @ApiResponse(responseCode = "200",description = "History returned"),
+                    @ApiResponse(responseCode = "404",description = "Payment not found")
+            }
+    )
+    @Observed(name = "api.payment.history")
     public ResponseEntity<PaymentHistoryResponse> getPaymentHistory(
             @PathVariable UUID paymentId
     ){
