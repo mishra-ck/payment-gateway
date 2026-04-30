@@ -17,6 +17,13 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 
+/**
+ * Jobs:
+ * 1. PartitionMaintenanceJob - create next month's transaction partition in advance
+ * 2. IdempotencyCleanupJob   - remove expired idempotency records
+ * 3. StalePaymentJob         - force-fails payments stuck in PENDING > 30 min
+ * 4. LedgerReconciliationJob - verifies DR/CR balance in Ledger
+ */
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -24,7 +31,7 @@ public class ScheduledJobs {
 
     private final IdempotencyRepository idempotencyRepository;
     private final PaymentRepository paymentRepository;
-    private LedgerEntryRepository ledgerEntryRepository;
+    private final LedgerEntryRepository ledgerEntryRepository;
     private final MeterRegistry meterRegistry;
 
     @PersistenceContext
@@ -99,6 +106,7 @@ public class ScheduledJobs {
      * Runs at 2:00 AM every day, verify Ledger is balanced
      * Alert( via metric) if any journal has imbalanced Debit/Credit entries.
      */
+    @Scheduled(cron = "${payment.reconciliation.cron:0 0 2 * * *}")
     @Transactional(readOnly = true)
     public void reconcileLedger(){
         var yesterday = Instant.now().minus(1,ChronoUnit.DAYS);
