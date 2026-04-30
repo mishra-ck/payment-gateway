@@ -37,12 +37,14 @@ dependencies {
 
 	implementation 'io.micrometer:micrometer-registry-prometheus'
 	implementation 'io.micrometer:micrometer-tracing-bridge-brave'
-	implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+	implementation 'io.zipkin.reporter2:zipkin-reporter-brave:3.4.2'
 
 	implementation 'org.redisson:redisson-spring-boot-starter:3.27.1'
 
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
 
 //	implementation 'org.mapstruct:mapstruct'
 //	implementation 'org.mapstruct:mapstruct-processor'
