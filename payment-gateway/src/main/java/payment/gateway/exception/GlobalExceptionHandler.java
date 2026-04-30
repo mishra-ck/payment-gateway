@@ -9,7 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import payment.gateway.domain.dto.ErrorResponse;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -25,13 +27,18 @@ public class GlobalExceptionHandler {
     private final MeterRegistry meterRegistry;
 
     @ExceptionHandler(PaymentNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(PaymentNotFoundException ex,
+    public ResponseEntity<ErrorResponse> handlePaymentNotFound(PaymentNotFoundException ex,
                                                         HttpServletRequest request){
-        return error
+        return error(HttpStatus.NOT_FOUND,"PAYMENT_NOT_FOUND", ex.getMessage(),List.of());
     }
 
     private ResponseEntity<ErrorResponse> error(HttpStatus status, String code,
-                                                String message, List<ErrorResponse.>){
-
+                                                String message, List<ErrorResponse.FieldError> fieldErrors){
+        var traceId = tracer.currentSpan() != null
+                ? tracer.currentSpan().context().traceId()
+                : "no-trace";
+        return ResponseEntity.status(status).body(
+          new ErrorResponse(code,message,traceId, Instant.now(),fieldErrors)
+        );
     }
 }
