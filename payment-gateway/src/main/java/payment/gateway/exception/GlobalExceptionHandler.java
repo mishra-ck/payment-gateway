@@ -31,6 +31,11 @@ public class GlobalExceptionHandler {
                                                         HttpServletRequest request){
         return error(HttpStatus.NOT_FOUND,"PAYMENT_NOT_FOUND", ex.getMessage(),List.of());
     }
+    @ExceptionHandler(InvalidPaymentException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPayment(InvalidPaymentException ex,
+                                                              HttpServletRequest request){
+        return error(HttpStatus.BAD_REQUEST, "INVALID_PAYMENT",ex.getMessage(),List.of());
+    }
 
     private ResponseEntity<ErrorResponse> error(HttpStatus status, String code,
                                                 String message, List<ErrorResponse.FieldError> fieldErrors){
