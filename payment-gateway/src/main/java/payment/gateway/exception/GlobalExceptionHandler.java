@@ -56,6 +56,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.TOO_MANY_REQUESTS,"RATE_LIMIT_EXCEEDED",ex.getMessage(),List.of());
     }
 
+    @ExceptionHandler
+    public ResponseEntity<ErrorResponse> handleServiceUnavailable(ServiceUnavailableException ex,
+                                                                  HttpServletRequest request){
+        counter("SERVICE_UNAVAILABLE");
+        return error(HttpStatus.SERVICE_UNAVAILABLE,"SERVICE_UNAVAILABLE",ex.getMessage(),List.of());
+    }
 
     private ResponseEntity<ErrorResponse> error(HttpStatus status, String code,
                                                 String message, List<ErrorResponse.FieldError> fieldErrors){
