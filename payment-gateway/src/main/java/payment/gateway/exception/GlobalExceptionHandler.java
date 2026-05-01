@@ -36,6 +36,16 @@ public class GlobalExceptionHandler {
                                                               HttpServletRequest request){
         return error(HttpStatus.BAD_REQUEST, "INVALID_PAYMENT",ex.getMessage(),List.of());
     }
+    @ExceptionHandler(DuplicatePaymentException.class)
+    public ResponseEntity<ErrorResponse> handleDuplication(DuplicatePaymentException ex,
+                                                           HttpServletRequest request){
+        return error(HttpStatus.CONFLICT,"DUPLICATE_PAYMENT",ex.getMessage(),List.of());
+    }
+    @ExceptionHandler(InsufficientFundException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientFund(InsufficientFundException ex,
+                                                                HttpServletRequest request){
+        return error(HttpStatus.UNPROCESSABLE_ENTITY,"INSUFFICIENT_FUNDS",ex.getMessage(),List.of());
+    }
 
     private ResponseEntity<ErrorResponse> error(HttpStatus status, String code,
                                                 String message, List<ErrorResponse.FieldError> fieldErrors){
