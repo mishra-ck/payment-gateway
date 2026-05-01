@@ -34,18 +34,28 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidPaymentException.class)
     public ResponseEntity<ErrorResponse> handleInvalidPayment(InvalidPaymentException ex,
                                                               HttpServletRequest request){
+        counter("INVALID_PAYMENT");
         return error(HttpStatus.BAD_REQUEST, "INVALID_PAYMENT",ex.getMessage(),List.of());
     }
     @ExceptionHandler(DuplicatePaymentException.class)
     public ResponseEntity<ErrorResponse> handleDuplication(DuplicatePaymentException ex,
                                                            HttpServletRequest request){
+        counter("DUPLICATE_PAYMENT");
         return error(HttpStatus.CONFLICT,"DUPLICATE_PAYMENT",ex.getMessage(),List.of());
     }
     @ExceptionHandler(InsufficientFundException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientFund(InsufficientFundException ex,
                                                                 HttpServletRequest request){
+        counter("INSUFFICIENT_FUNDS");
         return error(HttpStatus.UNPROCESSABLE_ENTITY,"INSUFFICIENT_FUNDS",ex.getMessage(),List.of());
     }
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimit(RateLimitExceededException ex,
+                                                         HttpServletRequest request){
+        counter("RATE_LIMIT_EXCEEDED");
+        return error(HttpStatus.TOO_MANY_REQUESTS,"RATE_LIMIT_EXCEEDED",ex.getMessage(),List.of());
+    }
+
 
     private ResponseEntity<ErrorResponse> error(HttpStatus status, String code,
                                                 String message, List<ErrorResponse.FieldError> fieldErrors){
@@ -55,5 +65,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(
           new ErrorResponse(code,message,traceId, Instant.now(),fieldErrors)
         );
+    }
+    private void counter(String errorType) {
+        meterRegistry.counter("api.errors", "type", errorType).increment();
     }
 }
